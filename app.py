@@ -14,24 +14,30 @@ st.set_page_config(
 
 # Fungsi untuk membersihkan dan mengubah kolom angka
 def clean_currency(x):
+    if pd.isna(x):
+        return 0.0
+    if isinstance(x, (int, float)):
+        return float(x)
     if isinstance(x, str):
-        x = x.replace(' ', '').replace(',', '').replace('"', '')
+        x = x.replace(' ', '').replace(',', '').replace('"', '').strip()
         if x == '-' or x == '':
             return 0.0
         try:
             return float(x)
         except ValueError:
             return 0.0
-    return x
+    return 0.0
 
 # Fungsi untuk memuat data (dengan cache agar cepat)
 @st.cache_data
 def load_data():
-    file_name = "BPR2604 APRIL 2026 BUAT ISENG.csv"
+    file_name = "KC2604 - KINERJA CABANG BULAN APRIL 2026 - Sheet1.csv"
     
     # Cek apakah file ada di direktori yang sama
     if os.path.exists(file_name):
         df = pd.read_csv(file_name)
+        # Membersihkan nama kolom dari spasi agar tidak error
+        df.columns = df.columns.str.strip()
     else:
         # Jika file tidak ditemukan, buat data dummy berdasarkan struktur CSV Anda 
         # agar dashboard tetap bisa didemonstrasikan
@@ -105,6 +111,8 @@ st.markdown("---")
 
 # Format Rupiah
 def format_rp(angka):
+    if pd.isna(angka):
+        return "Rp 0"
     return f"Rp {angka:,.0f}".replace(',', '.')
 
 # 1. KPI Cards
@@ -168,12 +176,18 @@ with col_chart4:
 # 3. Data Tabel Mentah
 st.markdown("---")
 st.subheader("📋 Rincian Data")
+
+# Memastikan kolom tersedia sebelum ditampilkan
+kolom_tabel = ['nama_kanwil', 'LOB', 'nama_bank', 'klasifikasi_produk', 'pokok_pembiayaan', 'nilai_ijp', 'ijp_acrual']
+kolom_tersedia = [col for col in kolom_tabel if col in df_filtered.columns]
+
 st.dataframe(
-    df_filtered[['nama_kanwil', 'LOB', 'nama_bank', 'klasifikasi_produk', 'pokok_pembiayaan', 'nilai_ijp', 'ijp_acrual']].style.format({
-        'pokok_pembiayaan': '{:,.2f}',
-        'nilai_ijp': '{:,.2f}',
-        'ijp_acrual': '{:,.2f}'
-    }), 
+    df_filtered[kolom_tersedia], 
+    column_config={
+        "pokok_pembiayaan": st.column_config.NumberColumn("Pokok Pembiayaan", format="Rp %.2f"),
+        "nilai_ijp": st.column_config.NumberColumn("Nilai IJP", format="Rp %.2f"),
+        "ijp_acrual": st.column_config.NumberColumn("IJP Akrual", format="Rp %.2f")
+    },
     use_container_width=True,
     height=300
 )
